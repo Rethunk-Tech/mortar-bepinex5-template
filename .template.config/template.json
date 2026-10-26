@@ -318,6 +318,17 @@
       "defaultValue": "false",
       "displayName": "Has settings",
       "description": "Adds one example setting to the mod's config file."
+    },
+    "unsharable": {
+      "type": "computed",
+      "value": "(configSync && (!config || audience != \"everyone\"))"
+    },
+    "configSync": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "false",
+      "displayName": "Shares settings with the lobby",
+      "description": "Adds a setting where the host's value applies to every player, using Mortar-ConfigSync. Needs settings on and audience set to everyone."
     }
   },
   "forms": {

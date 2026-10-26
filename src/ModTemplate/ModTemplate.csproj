@@ -25,5 +25,15 @@
     <ThunderstorePackageFile Include="$(SolutionRoot)icon.png" />
     <ThunderstorePackageFile Include="$(SolutionRoot)LICENSE" />
     <ThunderstoreDependency Include="BepInEx-BepInExPack" Version="5.4.2305" />
+    <!--#if (configSync) -->
+    <ThunderstoreDependency Include="Mortar-ConfigSync" Version="0.1.0" />
+    <!--#endif -->
   </ItemGroup>
+  <!--#if (unsharable) -->
+
+  <!-- Fail before anything gets downloaded. -->
+  <Target Name="RefuseUnsharable" BeforeTargets="PrepareForBuild">
+    <Error Text="configSync needs config on and audience everyone, since every player has to have a shared setting." />
+  </Target>
+  <!--#endif -->
 </Project>

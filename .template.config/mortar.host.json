@@ -31,6 +31,13 @@
 			"requires": {
 				"audience": "everyone"
 			}
+		},
+		{
+			"id": "configSync",
+			"requires": {
+				"config": "true",
+				"audience": "everyone"
+			}
 		}
 	]
 }

@@ -50,6 +50,13 @@
         "text": "Has settings"
       },
       "isVisible": true
+    },
+    {
+      "id": "configSync",
+      "name": {
+        "text": "Shares settings with the lobby"
+      },
+      "isVisible": true
     }
   ]
 }

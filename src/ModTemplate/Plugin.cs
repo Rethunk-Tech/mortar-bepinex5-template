@@ -6,6 +6,9 @@ using BepInEx;
 using BepInEx.Configuration;
 #endif
 using BepInEx.Logging;
+#if (configSync)
+using ConfigSync;
+#endif
 #if (assets)
 using UnityEngine;
 #endif
@@ -13,6 +16,9 @@ using UnityEngine;
 namespace ModTemplate;
 
 [BepInPlugin(MyPluginInfo.Id, MyPluginInfo.Name, MyPluginInfo.Version)]
+#if (configSync)
+[BepInDependency("tech.rethunk.mortar.ConfigSync")]
+#endif
 [BepInProcess("Lethal Company.exe")]
 public class Plugin : BaseUnityPlugin
 {
@@ -21,6 +27,11 @@ public class Plugin : BaseUnityPlugin
 
     // Settings here are each player's own. Use ConfigSync for ones the whole lobby should share.
     internal static ConfigEntry<bool> Enabled { get; private set; } = null!;
+#if (configSync)
+
+    // While connected, Value is the host's, so everyone in the lobby uses the same setting.
+    internal static SyncedEntry<float> Strength { get; private set; } = null!;
+#endif
 #endif
 #if (assets)
 
@@ -32,6 +43,11 @@ public class Plugin : BaseUnityPlugin
         Log = Logger;
 #if (config)
         Enabled = Config.Bind("General", "Enabled", true, "Turns the mod on or off.");
+#if (configSync)
+        Strength = SyncedConfig.For(this).Share(
+            Config.Bind("General", "Strength", 1f, "How strong the mod's effect is. The host's value applies to everyone.")
+        );
+#endif
 #endif
 #if (assets)
         Assets = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Info.Location)!, "modtemplate.bundle"));

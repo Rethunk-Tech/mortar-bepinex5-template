@@ -14,7 +14,7 @@ common=(--description "$description" --modAuthor "Template Check \$(Version)"
   --team TemplateCheck --idPrefix com.templatecheck --repositoryUrl 'https://example.com/check?a=1&b=2')
 declare -A variants=(
   [off]=""
-  [on]="--netcode true --assets true --config true --categories items --categories misc"
+  [on]="--netcode true --assets true --config true --configSync true --categories items --categories misc"
   [client]="--audience client"
 )
 leftover='Mod(Template|Xml[A-Z]|Description|Author|Team|IdPrefix|Audience|Categories|RepositoryUrl|Year)|modtemplate|#if \(|#endif'
@@ -50,6 +50,12 @@ dotnet new "$short" --debug:custom-hive "$work/hive" -n CheckMod -o "$work/refus
   --netcode true --audience host >/dev/null
 if (cd "$work/refused/CheckMod" && dotnet build -c Release >/dev/null 2>&1); then
   echo "refused: netcode with audience host built" >&2
+  status=1
+fi
+dotnet new "$short" --debug:custom-hive "$work/hive" -n CheckMod -o "$work/unshared/CheckMod" "${common[@]}" \
+  --configSync true >/dev/null
+if ! (cd "$work/unshared/CheckMod" && dotnet build -c Release 2>&1 || true) | grep -q "configSync needs config on"; then
+  echo "refused: configSync without config built, or failed for another reason" >&2
   status=1
 fi
 exit "$status"

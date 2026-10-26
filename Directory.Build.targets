@@ -52,9 +52,9 @@
     <!-- The game ships Transport 1.5.0, and the patcher builds every 1.x against 1.0.0. -->
     <NetcodePatcherTransportVersion>1.0.0</NetcodePatcherTransportVersion>
   </PropertyGroup>
-  <ItemGroup>
+  <ItemGroup Condition="'$(IsThunderstorePackable)' == 'true'">
     <NetcodePatch Include="$(TargetPath)" />
-    <!-- The prefab id is fixed by hand so every player registers the same one. -->
+    <!-- The plugin sets the prefab id itself so every player registers the same one. -->
     <Publicize Include="Unity.Netcode.Runtime:Unity.Netcode.NetworkObject.GlobalObjectIdHash" />
   </ItemGroup>
   <!-- The patcher leaves the unpatched DLL next to the patched one. Both have the same GUID, so BepInEx could load either. -->
@@ -119,7 +119,7 @@
     <AssetBundle Include="$(SolutionRoot)assets/*.bundle" />
     <ModFile Include="@(AssetBundle)" Destination="plugins/" />
   </ItemGroup>
-  <Target Name="CopyAssetBundles" AfterTargets="Build">
+  <Target Name="CopyAssetBundles" AfterTargets="Build" Condition="'$(IsThunderstorePackable)' == 'true'">
     <Copy SourceFiles="@(AssetBundle)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
   </Target>
   <!--#endif -->
@@ -127,6 +127,19 @@
   <Target Name="MapModFilesForThunderPipe" AfterTargets="Build" BeforeTargets="ThunderPipePack">
     <ItemGroup>
       <ThunderstoreFile Include="@(ModFile)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- BepInEx.Core's SkipBepinRefs leaves BepInEx and its libraries out of a build's output, since the game has them.
+       A test project runs outside the game, so it gets them back. -->
+  <Target Name="KeepBepInExForTests" AfterTargets="SkipBepinRefs" Condition="'$(IsTestingPlatformApplication)' == 'true'">
+    <ItemGroup>
+      <!-- Item filters, not a condition: dotnet new evaluates and drops a condition that names no property. -->
+      <ReferenceCopyLocalPaths Include="@(RuntimeCopyLocalItems->WithMetadataValue('NuGetPackageId', 'BepInEx.BaseLib'))" />
+      <ReferenceCopyLocalPaths Include="@(RuntimeCopyLocalItems->WithMetadataValue('NuGetPackageId', 'HarmonyX'))" />
+      <ReferenceCopyLocalPaths Include="@(RuntimeCopyLocalItems->WithMetadataValue('NuGetPackageId', 'Mono.Cecil'))" />
+      <ReferenceCopyLocalPaths Include="@(RuntimeCopyLocalItems->WithMetadataValue('NuGetPackageId', 'MonoMod.RuntimeDetour'))" />
+      <ReferenceCopyLocalPaths Include="@(RuntimeCopyLocalItems->WithMetadataValue('NuGetPackageId', 'MonoMod.Utils'))" />
     </ItemGroup>
   </Target>
 

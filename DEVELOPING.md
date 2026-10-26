@@ -11,6 +11,28 @@ In the profile you test in, set `debug_enabled = true` in `doorstop_config.ini`,
 should wait for the debugger at start-up. Start the game, then run Attach to Lethal Company in VS Code (Mono Debug
 extension) or Rider (Mono Remote on 127.0.0.1:10000). Debug builds include symbols, so breakpoints work.
 
+## Tests
+
+Code that doesn't touch Unity can be tested outside the game. Put an xUnit v3 project under `tests/`, for example
+`tests/ModTemplate.Tests/ModTemplate.Tests.csproj`:
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/ModTemplate/ModTemplate.csproj" />
+    <PackageReference Include="xunit.v3" Version="4.0.2" />
+  </ItemGroup>
+</Project>
+```
+
+Add it to `ModTemplate.slnx` and run `dotnet test`. CI runs it after the build. The plugin's classes derive from Unity
+types, so tests reach the code through other classes, with `InternalsVisibleTo` on the plugin project for internal ones.
+
 ## Publishing
 
 Pushing a `vX.Y.Z` tag publishes from CI with the `THUNDERSTORE_API_TOKEN` secret, once the build passes. To publish from your own computer,

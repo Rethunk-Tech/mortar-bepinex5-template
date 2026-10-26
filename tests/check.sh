@@ -45,6 +45,42 @@ out="$work/off/CheckMod"
   jq -e '.version_number == "1.2.3"' artifacts/bin/CheckMod/release/manifest.json >/dev/null) ||
   { echo "version: a tag did not become the version as it should" >&2; status=1; }
 
+out="$work/off/CheckMod"
+mkdir -p "$out/tests/CheckMod.Tests"
+cat >"$out/tests/CheckMod.Tests/CheckMod.Tests.csproj" <<'XML'
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/CheckMod/CheckMod.csproj" />
+    <PackageReference Include="xunit.v3" Version="4.0.2" />
+  </ItemGroup>
+</Project>
+XML
+cat >"$out/tests/CheckMod.Tests/ConfigTests.cs" <<'CS'
+using System.IO;
+using BepInEx.Configuration;
+using Xunit;
+
+namespace CheckMod.Tests;
+
+public class ConfigTests
+{
+    [Fact]
+    public void BepInExLoads()
+    {
+        string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Assert.Equal(3, new ConfigFile(path, false).Bind("General", "Number", 3, "").Value);
+    }
+}
+CS
+(cd "$out" && dotnet sln CheckMod.slnx add tests/CheckMod.Tests/CheckMod.Tests.csproj &&
+  dotnet build -c Release && dotnet test -c Release --no-build) >"$work/tests.log" 2>&1 ||
+  { cat "$work/tests.log" >&2; echo "tests: a test project next to the plugin does not build or run" >&2; status=1; }
+
 # Netcode means every player needs the mod, so any other audience has to fail.
 dotnet new "$short" --debug:custom-hive "$work/hive" -n CheckMod -o "$work/refused/CheckMod" "${common[@]}" \
   --netcode true --audience host >/dev/null

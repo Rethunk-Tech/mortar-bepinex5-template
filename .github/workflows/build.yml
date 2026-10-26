@@ -36,6 +36,8 @@ jobs:
         if: hashFiles('.template.config/template.json') == ''
       - run: dotnet build -c Release --no-restore
         if: hashFiles('.template.config/template.json') == ''
+      - run: dotnet test -c Release --no-build
+        if: hashFiles('.template.config/template.json') == '' && hashFiles('tests/*/*.csproj') != ''
 
   publish:
     # Tags on the template repo only mark versions for Mortar.

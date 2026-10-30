@@ -25,6 +25,7 @@
           ],
           "exclude": [
             "**/.git/**",
+            ".gate.toml",
             "artifacts/**",
             "tests/**",
             ".github/workflows/template.yml",

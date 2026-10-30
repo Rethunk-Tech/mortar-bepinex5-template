@@ -45,6 +45,14 @@ out="$work/off/CheckMod"
   jq -e '.version_number == "1.2.3"' artifacts/bin/CheckMod/release/manifest.json >/dev/null) ||
   { echo "version: a tag did not become the version as it should" >&2; status=1; }
 
+# A git that warns on stderr (as under an AppImage's library path) must not leak the warning into the version.
+mkdir -p "$work/noisy-git"
+printf '#!/bin/sh\necho "git: loader warning" >&2\nexec %s "$@"\n' "$(command -v git)" >"$work/noisy-git/git"
+chmod +x "$work/noisy-git/git"
+(cd "$out" && PATH="$work/noisy-git:$PATH" dotnet build -c Release --no-restore -p:ReleaseTag= >/dev/null &&
+  ! grep -rq "loader warning" artifacts/obj/CheckMod/release/CheckMod.AssemblyInfo.cs) ||
+  { echo "version: git's stderr ended up in the version" >&2; status=1; }
+
 out="$work/off/CheckMod"
 mkdir -p "$out/tests/CheckMod.Tests"
 cat >"$out/tests/CheckMod.Tests/CheckMod.Tests.csproj" <<'XML'

@@ -252,9 +252,14 @@
   <!-- The version comes from the latest vX.Y.Z tag (0.1.0 before there is one). The file version's fourth number is
        the number of commits since that tag. -->
   <Target Name="VersionFromTag" BeforeTargets="BeforeCompile;GetAssemblyVersion;CoreCompile">
+    <!-- ConsoleToMSBuild captures stderr too, so a loader warning from git would end up in the version. -->
+    <PropertyGroup>
+      <GitNoStderr Condition="$([MSBuild]::IsOSPlatform('Windows'))">2&gt;nul</GitNoStderr>
+      <GitNoStderr Condition="'$(GitNoStderr)' == ''">2&gt;/dev/null</GitNoStderr>
+    </PropertyGroup>
     <!-- A mod folder inside another repo has no tags of its own, and that repo's tags aren't its version. -->
     <Exec
-      Command="git rev-parse --show-prefix"
+      Command="git rev-parse --show-prefix $(GitNoStderr)"
       WorkingDirectory="$(SolutionRoot)"
       ConsoleToMSBuild="true"
       IgnoreExitCode="true"
@@ -268,7 +273,7 @@
          the shell doesn't expand it against files in the folder. -->
     <Exec
       Condition="'$(ReleaseTag)' == '' And '$(PrefixExit)' == '0' And '$(GitPrefix)' == ''"
-      Command="git describe --tags --abbrev=0 --match &quot;v[0-9]*.[0-9]*.[0-9]*&quot;"
+      Command="git describe --tags --abbrev=0 --match &quot;v[0-9]*.[0-9]*.[0-9]*&quot; $(GitNoStderr)"
       WorkingDirectory="$(SolutionRoot)"
       ConsoleToMSBuild="true"
       IgnoreExitCode="true"
@@ -293,7 +298,7 @@
       <ThunderstoreVersion>$(Version)</ThunderstoreVersion>
     </PropertyGroup>
     <Exec
-      Command="git rev-list --count $(SinceTag)"
+      Command="git rev-list --count $(SinceTag) $(GitNoStderr)"
       WorkingDirectory="$(SolutionRoot)"
       ConsoleToMSBuild="true"
       IgnoreExitCode="true"

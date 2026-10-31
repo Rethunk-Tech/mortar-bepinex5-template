@@ -124,6 +124,14 @@
   </Target>
   <!--#endif -->
 
+  <ItemGroup>
+    <ContentFile Include="$(SolutionRoot)content/**/*" Exclude="$(SolutionRoot)content/README.md" />
+    <ModFile Include="@(ContentFile)" Destination="plugins/%(RecursiveDir)" />
+  </ItemGroup>
+  <Target Name="CopyContent" AfterTargets="Build" Condition="'$(IsThunderstorePackable)' == 'true'">
+    <Copy SourceFiles="@(ContentFile)" DestinationFiles="@(ContentFile->'$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+
   <Target Name="MapModFilesForThunderPipe" AfterTargets="Build" BeforeTargets="ThunderPipePack">
     <ItemGroup>
       <ThunderstoreFile Include="@(ModFile)" />

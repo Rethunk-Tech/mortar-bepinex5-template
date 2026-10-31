@@ -37,8 +37,11 @@ for name in "${!variants[@]}"; do
     dotnet build -c Release --no-restore >/dev/null &&
     dotnet build -c Debug --no-restore >/dev/null &&
     ! ls artifacts/bin/CheckMod/*/*_original.dll 2>/dev/null &&
+    # A netcode mod's DLL must reference every game assembly at the version it compiled against: the patcher's own
+    # Unity.Netcode.Runtime 4.0.0.0 reference makes Unity's API updater prompt. The target fails on any mismatch.
+    { [ "$name" != on ] || dotnet msbuild src/CheckMod -p:Configuration=Release -nologo -v:q -t:ResolveAssemblyReferences\;VerifyNetcodeReferences; } &&
     jq -e --arg d "$description" '.description == $d' artifacts/bin/CheckMod/release/manifest.json >/dev/null) ||
-    { echo "$name: the generated project is not formatted, does not build in Release and Debug, keeps an unpatched DLL, or writes a manifest.json without the description as given" >&2; status=1; }
+    { echo "$name: the generated project is not formatted, does not build in Release and Debug, keeps an unpatched DLL, references a game assembly at another version than it compiled against, or writes a manifest.json without the description as given" >&2; status=1; }
 done
 # The version comes from the latest vX.Y.Z tag or a release tag CI passes in. A pre-release tag doesn't count.
 out="$work/off/CheckMod"

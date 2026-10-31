@@ -53,7 +53,23 @@ chmod +x "$work/noisy-git/git"
   ! grep -rq "loader warning" artifacts/obj/CheckMod/release/CheckMod.AssemblyInfo.cs) ||
   { echo "version: git's stderr ended up in the version" >&2; status=1; }
 
-out="$work/off/CheckMod"
+# content/ ships as it is: Mortar writes each content tick there (mortar/<kind>/, moresuits/, a sound pack), and
+# every shape has to reach the build output and the package under plugins/, and content/'s own README stays out.
+(cd "$out" && mkdir -p content/mortar/tv content/moresuits content/sounds &&
+  echo clip >content/mortar/tv/clip.webm && echo suit >content/moresuits/suit.png &&
+  echo '{"name":"CheckMod"}' >content/sound_pack.json && echo sound >content/sounds/a.ogg &&
+  dotnet build -c Release --no-restore >/dev/null &&
+  for f in mortar/tv/clip.webm moresuits/suit.png sound_pack.json sounds/a.ogg; do
+    [ -f "artifacts/bin/CheckMod/release/$f" ] || exit 1
+  done &&
+  zip="$(find artifacts -name '*.zip' -newer content/sounds/a.ogg | head -n 1)" && [ -n "$zip" ] &&
+  unzip -Z1 "$zip" >"$work/zip.txt" &&
+  for f in mortar/tv/clip.webm moresuits/suit.png sound_pack.json sounds/a.ogg; do
+    grep -qx "plugins/$f" "$work/zip.txt" || exit 1
+  done &&
+  ! grep -q 'README.md$' <(grep '^plugins/' "$work/zip.txt")) ||
+  { echo "content: content/ did not reach the build output and the package's plugins/ as it is" >&2; status=1; }
+
 mkdir -p "$out/tests/CheckMod.Tests"
 cat >"$out/tests/CheckMod.Tests/CheckMod.Tests.csproj" <<'XML'
 <Project Sdk="Microsoft.NET.Sdk">

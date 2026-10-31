@@ -23,6 +23,11 @@ for name in "${!variants[@]}"; do
   out="$work/$name/CheckMod"
   # shellcheck disable=SC2086 # the variant's options split on spaces
   dotnet new "$short" --debug:custom-hive "$work/hive" -n CheckMod -o "$out" "${common[@]}" ${variants[$name]} >/dev/null
+  # CHANGELOG.md is the new mod's own: it must not carry the template's release notes.
+  if [ "$(cat "$out/CHANGELOG.md")" != "# Changelog" ]; then
+    echo "$name: the generated CHANGELOG.md holds more than its heading" >&2
+    status=1
+  fi
   if grep -rInE "$leftover" "$out"; then
     echo "$name: the generated project keeps a placeholder or a template conditional (above)" >&2
     status=1

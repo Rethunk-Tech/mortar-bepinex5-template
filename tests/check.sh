@@ -19,10 +19,17 @@ declare -A variants=(
 )
 leftover='Mod(Template|Xml[A-Z]|Description|Author|Team|IdPrefix|Audience|Categories|RepositoryUrl|Year)|modtemplate|#if \(|#endif'
 status=0
+# dotnet new writes the shared hive, so only the checks run side by side.
 for name in "${!variants[@]}"; do
-  out="$work/$name/CheckMod"
   # shellcheck disable=SC2086 # the variant's options split on spaces
-  dotnet new "$short" --debug:custom-hive "$work/hive" -n CheckMod -o "$out" "${common[@]}" ${variants[$name]} >/dev/null
+  dotnet new "$short" --debug:custom-hive "$work/hive" -n CheckMod -o "$work/$name/CheckMod" "${common[@]}" ${variants[$name]} >/dev/null
+done
+dotnet new "$short" --debug:custom-hive "$work/hive" -n CheckMod -o "$work/refused/CheckMod" "${common[@]}" \
+  --netcode true --audience host >/dev/null
+dotnet new "$short" --debug:custom-hive "$work/hive" -n CheckMod -o "$work/unshared/CheckMod" "${common[@]}" \
+  --configSync true >/dev/null
+check_variant() {
+  local name=$1 out="$work/$1/CheckMod" status=0
   # CHANGELOG.md is the new mod's own: it must not carry the template's release notes.
   if [ "$(cat "$out/CHANGELOG.md")" != "# Changelog" ]; then
     echo "$name: the generated CHANGELOG.md holds more than its heading" >&2
@@ -42,9 +49,22 @@ for name in "${!variants[@]}"; do
     { [ "$name" != on ] || dotnet msbuild src/CheckMod -p:Configuration=Release -nologo -v:q -t:ResolveAssemblyReferences\;VerifyNetcodeReferences; } &&
     jq -e --arg d "$description" '.description == $d' artifacts/bin/CheckMod/release/manifest.json >/dev/null) ||
     { echo "$name: the generated project is not formatted, does not build in Release and Debug, keeps an unpatched DLL, references a game assembly at another version than it compiled against, or writes a manifest.json without the description as given" >&2; status=1; }
+  return "$status"
+}
+pids=()
+for name in "${!variants[@]}"; do
+  check_variant "$name" &
+  pids+=("$!")
 done
+for pid in "${pids[@]}"; do
+  wait "$pid" || status=1
+done
+
+# These build on the off variant, which is finished by now, and each changes its project, so each gets a copy.
+check_version() {
+  local status=0 out="$work/version/CheckMod"
+  mkdir -p "$work/version" && cp -a "$work/off/CheckMod" "$out"
 # The version comes from the latest vX.Y.Z tag or a release tag CI passes in. A pre-release tag doesn't count.
-out="$work/off/CheckMod"
 (cd "$out" && git tag v1.2.3 && dotnet build -c Release --no-restore >/dev/null &&
   jq -e '.version_number == "1.2.3"' artifacts/bin/CheckMod/release/manifest.json >/dev/null &&
   dotnet build -c Release --no-restore -p:ReleaseTag=v2.0.0 >/dev/null &&
@@ -60,7 +80,11 @@ chmod +x "$work/noisy-git/git"
 (cd "$out" && PATH="$work/noisy-git:$PATH" dotnet build -c Release --no-restore -p:ReleaseTag= >/dev/null &&
   ! grep -rq "loader warning" artifacts/obj/CheckMod/release/CheckMod.AssemblyInfo.cs) ||
   { echo "version: git's stderr ended up in the version" >&2; status=1; }
-
+  return "$status"
+}
+check_content() {
+  local status=0 out="$work/content/CheckMod"
+  mkdir -p "$work/content" && cp -a "$work/off/CheckMod" "$out"
 # content/ ships as it is: Mortar writes each content tick there (mortar/<kind>/, moresuits/, a sound pack), and
 # every shape has to reach the build output and the package under plugins/, and content/'s own README stays out.
 (cd "$out" && mkdir -p content/mortar/tv content/moresuits content/sounds &&
@@ -77,7 +101,11 @@ chmod +x "$work/noisy-git/git"
   done &&
   ! grep -q 'README.md$' <(grep '^plugins/' "$work/zip.txt")) ||
   { echo "content: content/ did not reach the build output and the package's plugins/ as it is" >&2; status=1; }
-
+  return "$status"
+}
+check_tests() {
+  local status=0 out="$work/tests/CheckMod"
+  mkdir -p "$work/tests" && cp -a "$work/off/CheckMod" "$out"
 mkdir -p "$out/tests/CheckMod.Tests"
 cat >"$out/tests/CheckMod.Tests/CheckMod.Tests.csproj" <<'XML'
 <Project Sdk="Microsoft.NET.Sdk">
@@ -112,18 +140,30 @@ CS
 (cd "$out" && dotnet sln CheckMod.slnx add tests/CheckMod.Tests/CheckMod.Tests.csproj &&
   dotnet build -c Release && dotnet test -c Release --no-build) >"$work/tests.log" 2>&1 ||
   { cat "$work/tests.log" >&2; echo "tests: a test project next to the plugin does not build or run" >&2; status=1; }
-
+  return "$status"
+}
+check_refused() {
+  local status=0
 # Netcode means every player needs the mod, so any other audience has to fail.
-dotnet new "$short" --debug:custom-hive "$work/hive" -n CheckMod -o "$work/refused/CheckMod" "${common[@]}" \
-  --netcode true --audience host >/dev/null
 if (cd "$work/refused/CheckMod" && dotnet build -c Release >/dev/null 2>&1); then
   echo "refused: netcode with audience host built" >&2
   status=1
 fi
-dotnet new "$short" --debug:custom-hive "$work/hive" -n CheckMod -o "$work/unshared/CheckMod" "${common[@]}" \
-  --configSync true >/dev/null
 if ! (cd "$work/unshared/CheckMod" && dotnet build -c Release 2>&1 || true) | grep -q "configSync needs config on"; then
   echo "refused: configSync without config built, or failed for another reason" >&2
   status=1
 fi
+  return "$status"
+}
+check_version &
+pids=("$!")
+check_content &
+pids+=("$!")
+check_tests &
+pids+=("$!")
+check_refused &
+pids+=("$!")
+for pid in "${pids[@]}"; do
+  wait "$pid" || status=1
+done
 exit "$status"

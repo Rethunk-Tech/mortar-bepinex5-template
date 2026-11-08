@@ -44,12 +44,12 @@ internal static class ModNetworkSetup
     {
         foreach (Type type in LoadableTypes())
         {
-            foreach (MethodInfo method in type.GetMethods(BindingFlags.Static | BindingFlags.NonPublic))
+            MethodInfo[] setupMethods = Array.FindAll(
+                type.GetMethods(BindingFlags.Static | BindingFlags.NonPublic),
+                m => m.GetCustomAttributes(typeof(RuntimeInitializeOnLoadMethodAttribute), false).Length > 0);
+            foreach (MethodInfo method in setupMethods)
             {
-                if (method.GetCustomAttributes(typeof(RuntimeInitializeOnLoadMethodAttribute), false).Length > 0)
-                {
-                    method.Invoke(null, null);
-                }
+                method.Invoke(null, null);
             }
         }
         // Both are private in the game. The publicized reference only makes them look public.

@@ -23,8 +23,8 @@ leftover='Mod(Template|Xml[A-Z]|Description|Author|Team|IdPrefix|Audience|Catego
 status=0
 # dotnet new writes the shared hive, so only the checks run side by side.
 for name in "${!variants[@]}"; do
-    # shellcheck disable=SC2086 # the variant's options split on spaces
-    dotnet new "$short" --debug:custom-hive "$work/hive" -n CheckMod -o "$work/$name/CheckMod" "${common[@]}" ${variants[$name]} >/dev/null
+    read -ra options <<<"${variants[$name]}"
+    dotnet new "$short" --debug:custom-hive "$work/hive" -n CheckMod -o "$work/$name/CheckMod" "${common[@]}" "${options[@]}" >/dev/null
 done
 dotnet new "$short" --debug:custom-hive "$work/hive" -n CheckMod -o "$work/refused/CheckMod" "${common[@]}" \
     --netcode true --audience host >/dev/null

@@ -2,6 +2,8 @@
 # tests/check.sh: generates the template with fixed values (all options off, then all on), fails if any placeholder
 # or template conditional is left over, checks formatting, and builds in Release and Debug.
 set -euo pipefail
+# Fixture repos must not inherit the developer's git config: tag.gpgsign turns a plain `git tag` into one that wants a message.
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
 root="$(cd "$(dirname "$0")/.." && pwd)"
 work="$(mktemp -d "${TMPDIR:-/tmp}/template-check.XXXXXX")"
 trap 'rm -rf "$work"' EXIT

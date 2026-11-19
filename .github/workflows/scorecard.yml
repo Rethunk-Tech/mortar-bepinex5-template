@@ -5,10 +5,14 @@ on:
   branch_protection_rule:
   schedule:
     - cron: "23 6 * * 1"
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 permissions: {}
 jobs:
   analysis:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       security-events: write
       id-token: write
